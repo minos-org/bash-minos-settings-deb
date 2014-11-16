@@ -1,5 +1,5 @@
 Source: minos-bash-settings
-Section: config
+Section: misc
 Priority: extra
 Maintainer: Javier P.L. <chilicuil@ubuntu.com>
 Build-Depends: debhelper (>= 9), dh-exec (>= 0.12), config-package-dev (>= 5.0)
