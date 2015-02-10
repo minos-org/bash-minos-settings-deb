@@ -1,7 +1,7 @@
 Format: http://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
-Upstream-Name: minos-bash-settings
-Upstream-Contact: https://github.com/minos-org/minos-bash-settings
-Source: https://github.com/minos-org/minos-bash-settings/archive/master.zip
+Upstream-Name: bash-minos-settings
+Upstream-Contact: https://github.com/minos-org/bash-minos-settings
+Source: https://github.com/minos-org/bash-minos-settings/archive/master.zip
 
 Files: *
 Copyright: Copyright (c) 2014, Javier P.L. <chilicuil@ubuntu.com>

@@ -1,14 +1,14 @@
-Source: minos-bash-settings
+Source: bash-minos-settings
 Section: misc
 Priority: extra
 Maintainer: Javier P.L. <chilicuil@ubuntu.com>
 Build-Depends: debhelper (>= 9), dh-exec (>= 0.12), config-package-dev (>= 5.0)
 Standards-Version: 3.9.4
-Homepage: https://github.com/minos-org/minos-bash-settings
-Vcs-Git: git://github.com/minos-org/minos-bash-settings-deb.git
-Vcs-Browser: https://github.com/minos-org/minos-bash-settings-deb.git
+Homepage: https://github.com/minos-org/bash-minos-settings
+Vcs-Git: git://github.com/minos-org/bash-minos-settings-deb.git
+Vcs-Browser: https://github.com/minos-org/bash-minos-settings-deb.git
 
-Package: minos-bash-settings
+Package: bash-minos-settings
 Architecture: all
 Depends: ${shlibs:Depends}, ${misc:Depends}, bash
 Provides: ${diverted-files}
@@ -20,4 +20,4 @@ Description: Bash tweaks required by minos-core-settings
  - /etc/inputrc
  - /skel/.bashrc
  Other files may be added in the future, see
- https://github.com/minos-org/minos-bash-settings for more details
+ https://github.com/minos-org/bash-minos-settings for more details
