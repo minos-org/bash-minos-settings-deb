@@ -15,7 +15,7 @@ DEB_MASTER_VERSION:=$(shell DEB_UPSTREAM_VERSION=${DEB_UPSTREAM_VERSION}; echo $
 export DH_VERBOSE=1
 
 %:
-	dh $@ --with config-package
+	dh $@
 
 get-orig-source:
 	rm -rf debian/tmp; mkdir debian/tmp
