@@ -10,14 +10,15 @@ Vcs-Browser: https://github.com/minos-org/bash-minos-settings-deb.git
 
 Package: bash-minos-settings
 Architecture: all
-Depends: ${shlibs:Depends}, ${misc:Depends}, bash
+Depends: ${shlibs:Depends}, ${misc:Depends}
+Recommends: bash
 Conflicts: diverts-etc++bash.bashrc, diverts-etc++inputrc, diverts-etc++skel++.bashrc
 Provides: diverts-etc++bash.bashrc, diverts-etc++inputrc, diverts-etc++skel++.bashrc
 Description: Bash tweaks required by minos-core-settings
  This package adds configuration files required by minos-core-settings.
  Some of the modified configuration files are:
- - /etc/bash.bashrc
- - /etc/inputrc
- - /skel/.bashrc
+ - /etc/bash.bashrc     # source /etc/profile.d/*sh
+ - /etc/inputrc         # read line twists for a better vi mode
+ - /etc/skel/.bashrc    # source ~/.profile.d/*.sh
  Other files may be added in the future, see
  https://github.com/minos-org/bash-minos-settings for more details
