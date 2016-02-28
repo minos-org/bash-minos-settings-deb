@@ -44,6 +44,7 @@ set -e
 #
 
 package=bash-minos-settings
+users="$(busybox cat /etc/passwd | busybox awk -F: '{if ($3 >= 1000 && $3 < 60000) print $1}')"
 
 ours=.minos
 theirs=.minos-orig
@@ -161,8 +162,31 @@ check_undisplace_unhide()
     fi
 }
 
+_replace_file_on_system_users()
+{
+    for user in ${users}; do
+        su "${user}" -c "test -f ~/.minos/not_override" && continue
+
+        if su "${user}" -c "test -f ${2}" || su "${user}" -c "test -d ${2}"; then
+            dist_size="$(su "${user}" -c "busybox du -s ${1}"|busybox cut -f1)"
+            user_size="$(su "${user}" -c "busybox du -s ${2}"|busybox cut -f1)"
+            vdotfile="minos-backup.$(busybox date +"%d-%m-%Y-%H:%M")"
+            if [ X"${dist_size}" = X"${user_size}" ]; then
+                continue
+            else
+                printf "%s\\n" "minos-core-settings: old $user's ${2} archive found, replacing and creating backup to ${2}.${vdotfile}"
+                su "${user}" -c "busybox mv ${2} ${2}.${vdotfile}"
+                su "${user}" -c "busybox cp -r ${1} ${2}"
+            fi
+        else
+            su "${user}" -c "busybox cp -r ${1} ${2}"
+        fi
+    done
+}
+
 if [ "$1" = "configure" ] || [ "$1" = "abort-remove" ]; then
     displace_link /etc/bash.bashrc
     displace_link /etc/inputrc
     displace_link /etc/skel/.bashrc
+    _replace_file_on_system_users '/etc/skel/.bashrc' '~/.bashrc'
 fi
