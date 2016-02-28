@@ -176,10 +176,10 @@ _replace_file_on_system_users()
             else
                 printf "%s\\n" "minos-core-settings: old $user's ${2} archive found, replacing and creating backup to ${2}.${vdotfile}"
                 su "${user}" -c "busybox mv ${2} ${2}.${vdotfile}"
-                su "${user}" -c "busybox cp -r ${1} ${2}"
+                su "${user}" -c "busybox cp -rL ${1} ${2}"
             fi
         else
-            su "${user}" -c "busybox cp -r ${1} ${2}"
+            su "${user}" -c "busybox cp -rL ${1} ${2}"
         fi
     done
 }
