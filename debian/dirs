@@ -1,2 +1,5 @@
 etc
 etc/skel
+usr/share/minos
+usr/share/minos/skel
+usr/share/minos/diverge

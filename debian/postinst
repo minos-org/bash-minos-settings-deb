@@ -1,192 +1,63 @@
 #!/bin/sh
 set -e
-# Manually generated, since dh_configpackage don't allow to
-# set DEB_DISPLACE_EXTENSION in dh
-#
-# displace.sh.in: diversion helpers for maintainer scripts
-#
-# displace_link <prefix> <suffix>
-#
-#   Ensures that the file <prefix><suffix> is properly diverted to
-#   <prefix>.divert-orig<suffix> by this package, and becomes a
-#   symbolic link to either <prefix>.divert<suffix> (default) or
-#   <prefix>.divert-orig<suffix>.
-#
-# undisplace_unlink <prefix> <suffix>
-#
-#   Undoes the action of displace_link <prefix> <suffix> specified
-#   above.
-#
-# Version: 4.0
-#
-# Copyright © 2008–2012 Tim Abbott <tabbott@mit.edu> and Anders
-# Kaseorg <andersk@mit.edu>
-#
-# Permission is hereby granted, free of charge, to any person
-# obtaining a copy of this software and associated documentation files
-# (the “Software”), to deal in the Software without restriction,
-# including without limitation the rights to use, copy, modify, merge,
-# publish, distribute, sublicense, and/or sell copies of the Software,
-# and to permit persons to whom the Software is furnished to do so,
-# subject to the following conditions:
-#
-# The above copyright notice and this permission notice shall be
-# included in all copies or substantial portions of the Software.
-#
-# THE SOFTWARE IS PROVIDED “AS IS”, WITHOUT WARRANTY OF ANY KIND,
-# EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
-# MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
-# NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS
-# BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN
-# ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
-# CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-# SOFTWARE.
-#
 
-package=bash-minos-settings
-users="$(busybox cat /etc/passwd | busybox awk -F: '{if ($3 >= 1000 && $3 < 60000) print $1}')"
+package="bash-minos-settings"
+users="$(cat /etc/passwd | awk -F: '{if ($3 >= 1000 && $3 < 60000) print $1}')"
+diverge_dir="/usr/share/minos/diverge"
 
-ours=.minos
-theirs=.minos-orig
+_diverge_element() {
+    _diverge__orig="${1}"
+    _diverge__new="${2}"
+    _diverge__backup="$(printf "%s" "${_diverge__orig}" | sed 's:/:##:g')"
 
-displace_link_displace()
-{
-    file=$1
-    ourfile=$2
-    theirfile=$3
-    if ! LC_ALL=C dpkg-divert --list "$package" | \
-	grep -xFq "diversion of $file to $theirfile by $package"; then
-	dpkg-divert --divert "$theirfile" --rename --package "$package" --add "$file"
+    if ! LC_ALL=C dpkg-divert --list "${package}" | \
+        grep -xFq "diversion of ${_diverge__orig} to ${diverge_dir}/${_diverge__backup} by ${package}"; then
+        mkdir -p "${diverge_dir}"
+        dpkg-divert --package "${package}" --add --rename \
+            --divert "${diverge_dir}/${_diverge__backup}" "${_diverge__orig}"
+        ln -s "${_diverge__new}" "${_diverge__orig}"
     fi
 }
 
-displace_link_symlink()
-{
-    file=$1
-    ourfile=$2
-    theirfile=$3
-    if [ ! -L "$file" ] && [ ! -e "$file" ]; then
-	ln -s "$(basename "$ourfile")" "$file"
-    elif [ ! -L "$file" ] || \
-	[ "$(readlink "$file")" != "$(basename "$ourfile")" -a \
-	  "$(readlink "$file")" != "$(basename "$theirfile")" ]; then
-	echo "*** OMINOUS WARNING ***: $file is not linked to either $(basename "$ourfile") or $(basename "$theirfile")" >&2
+_undiverge_element() {
+    _diverge__orig="${1}"
+    _diverge__new="${2}"
+    _diverge__backup="$(printf "%s" "${_diverge__orig}" | sed 's:/:##:g')"
+
+    if LC_ALL=C dpkg-divert --list "${package}" | \
+        grep -xFq "diversion of ${_diverge__orig} to ${diverge_dir}/${_diverge__backup} by ${package}"; then
+        rm -rf "${_diverge__orig}"
+        dpkg-divert --package "${package}" --rename --remove "${_diverge__orig}"
+        rmdir "${diverge_dir}" 2>/dev/null || :
     fi
 }
 
-displace_link()
-{
-    prefix=$1
-    suffix=$2
-
-    file=$prefix$suffix
-    ourfile=$prefix$ours$suffix
-    theirfile=$prefix$theirs$suffix
-    displace_link_displace "$file" "$ourfile" "$theirfile"
-    displace_link_symlink "$file" "$ourfile" "$theirfile"
-}
-
-displace_hide()
-{
-    file=$1
-    ourfile=""
-    theirfile=$2
-    displace_link_displace "$file" "$ourfile" "$theirfile"
-}
-
-undisplace_unlink_symlink()
-{
-    file="$1"
-    ourfile="$2"
-    theirfile="$3"
-    if [ ! -L "$file" ] || \
-	[ "$(readlink "$file")" != "$(basename "$ourfile")" -a \
-	  "$(readlink "$file")" != "$(basename "$theirfile")" ]; then
-	echo "*** OMINOUS WARNING ***: $file is not linked to either $(basename "$ourfile") or $(basename "$theirfile")" >&2
-    else
-	rm -f "$file"
-    fi
-}
-
-undisplace_unlink_displace()
-{
-    file="$1"
-    if [ ! -L "$file" ] && [ ! -e "$file" ]; then
-	dpkg-divert --remove --rename --package "$package" "$file"
-    else
-	echo "Not removing diversion of $file by $package" >&2
-    fi
-}
-
-undisplace_unlink()
-{
-    prefix=$1
-    suffix=$2
-
-    file=$prefix$suffix
-    ourfile=$prefix$ours$suffix
-    theirfile=$prefix$theirs$suffix
-
-    undisplace_unlink_symlink "$file" "$ourfile" "$theirfile"
-    undisplace_unlink_displace "$file"
-}
-
-undisplace_unhide()
-{
-    file=$1
-    undisplace_unlink_displace "$file"
-}
-
-check_undisplace_unlink()
-{
-    prefix=$1
-    suffix=$2
-
-    file=$prefix$suffix
-    ourfile=$prefix$ours$suffix
-    theirfile=$prefix$theirs$suffix
-
-    if LC_ALL=C dpkg-divert --list "$package" | \
-	grep -xFq "diversion of $file to $theirfile by $package"; then
-	undisplace_unlink "$prefix" "$suffix"
-    fi
-}
-
-check_undisplace_unhide()
-{
-    file=$1
-    hiddenfile=$2
-    if LC_ALL=C dpkg-divert --list "$package" | \
-	grep -xFq "diversion of $file to $hiddenfile by $package"; then
-	undisplace_unhide "$file"
-    fi
-}
-
-_replace_file_on_system_users()
-{
+_replace_file_on_system_users() {
     for user in ${users}; do
         su "${user}" -c "test -f ~/.minos/not_override" && continue
 
         if su "${user}" -c "test -f ${2}" || su "${user}" -c "test -d ${2}"; then
-            dist_size="$(su "${user}" -c "busybox du -s ${1}"|busybox cut -f1)"
-            user_size="$(su "${user}" -c "busybox du -s ${2}"|busybox cut -f1)"
-            vdotfile="minos-backup.$(busybox date +"%d-%m-%Y-%H:%M")"
+            dist_size="$(su "${user}" -c "du -s ${1}"|cut -f1)"
+            user_size="$(su "${user}" -c "du -s ${2}"|cut -f1)"
+            vdotfile="minos-backup.$(date +"%d-%m-%Y-%H:%M")"
             if [ X"${dist_size}" = X"${user_size}" ]; then
                 continue
             else
-                printf "%s\\n" "minos-core-settings: old $user's ${2} archive found, replacing and creating backup to ${2}.${vdotfile}"
-                su "${user}" -c "busybox mv ${2} ${2}.${vdotfile}"
-                su "${user}" -c "busybox cp -rL ${1} ${2}"
+                printf "%s\\n" "minos-core-settings: old ${user}'s ${2} archive found, replacing and creating backup to ${2}.${vdotfile}"
+                su "${user}" -c "mv ${2} ${2}.${vdotfile}"
+                su "${user}" -c "cp -rL ${1} ${2}"
             fi
         else
-            su "${user}" -c "busybox cp -rL ${1} ${2}"
+            su "${user}" -c "cp -rL ${1} ${2}"
         fi
     done
 }
 
-if [ "$1" = "configure" ] || [ "$1" = "abort-remove" ]; then
-    displace_link /etc/bash.bashrc
-    displace_link /etc/inputrc
-    displace_link /etc/skel/.bashrc
+if [ "${1}" = "configure" ] || [ "${1}" = "abort-remove" ]; then
+    _diverge_element /etc/bash.bashrc  /usr/share/minos/bash.bashrc
+    _diverge_element /etc/inputrc      /usr/share/minos/inputrc
+    _diverge_element /etc/skel/.bashrc /usr/share/minos/skel/.bashrc
     _replace_file_on_system_users '/etc/skel/.bashrc' '~/.bashrc'
 fi
+
+#DEBHELPER#

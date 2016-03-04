@@ -1,4 +1,4 @@
 #!/usr/bin/dh-exec
-etc.bash.bashrc => /etc/bash.bashrc.minos
-etc.inputrc => /etc/inputrc.minos
-skel.bashrc => /etc/skel/.bashrc.minos
+etc.bash.bashrc => /usr/share/minos/bash.bashrc
+etc.inputrc     => /usr/share/minos/inputrc
+skel.bashrc     => /usr/share/minos/skel/.bashrc
