@@ -53,11 +53,13 @@ _replace_file_on_system_users() {
     done
 }
 
-if [ "${1}" = "configure" ] || [ "${1}" = "abort-remove" ]; then
-    _diverge_element /etc/bash.bashrc  /usr/share/minos/bash.bashrc
-    _diverge_element /etc/inputrc      /usr/share/minos/inputrc
-    _diverge_element /etc/skel/.bashrc /usr/share/minos/skel/.bashrc
-    _replace_file_on_system_users '/etc/skel/.bashrc' '~/.bashrc'
-fi
+case "${1}" in
+    configure|abort-remove)
+        _diverge_element /etc/bash.bashrc  /usr/share/minos/bash.bashrc
+        _diverge_element /etc/inputrc      /usr/share/minos/inputrc
+        _diverge_element /etc/skel/.bashrc /usr/share/minos/skel/.bashrc
+        _replace_file_on_system_users      '/etc/skel/.bashrc' '~/.bashrc'
+        ;;
+esac
 
 #DEBHELPER#

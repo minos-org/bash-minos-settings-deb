@@ -52,10 +52,12 @@ _replace_file_on_system_users() {
     done
 }
 
-if [ "${1}" = "remove" ] || [ "${1}" = "deconfigure" ]; then
-    _undiverge_element /etc/bash.bashrc  /usr/share/minos/bash.bashrc
-    _undiverge_element /etc/inputrc      /usr/share/minos/inputrc
-    _undiverge_element /etc/skel/.bashrc /usr/share/minos/skel/.bashrc
-fi
+case "${1}" in
+    remove|deconfigure)
+        _undiverge_element /etc/bash.bashrc  /usr/share/minos/bash.bashrc
+        _undiverge_element /etc/inputrc      /usr/share/minos/inputrc
+        _undiverge_element /etc/skel/.bashrc /usr/share/minos/skel/.bashrc
+        ;;
+esac
 
 #DEBHELPER#
