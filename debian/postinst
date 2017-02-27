@@ -29,9 +29,10 @@ _install_element_system_users() {
         su "${user}" -c "test -f ~/.minos/not_override" && continue
 
         if su "${user}" -c "test -e ${2}"; then
-            dist_size="$(su "${user}" -c "busybox du -sL ${1}"|busybox cut -f1)"
-            user_size="$(su "${user}" -c "busybox du -sL ${2}"|busybox cut -f1)"
-            if [ X"${dist_size}" = X"${user_size}" ]; then
+            if su "${user}" -c "busybox diff -q ${1} ${2}" >/dev/null; then
+            #dist_size="$(su "${user}" -c "busybox du -sL ${1}"|busybox cut -f1)"
+            #user_size="$(su "${user}" -c "busybox du -sL ${2}"|busybox cut -f1)"
+            #if [ X"${dist_size}" = X"${user_size}" ]; then
                 continue
             else
                 vdotfile="minos-backup.$(busybox date +"%d-%m-%Y-%H:%M")"
