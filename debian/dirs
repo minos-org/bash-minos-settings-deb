@@ -1,5 +1,3 @@
-etc
-etc/skel
 usr/share/minos
-usr/share/minos/skel
-usr/share/minos/diverge
+usr/share/minos/bash-minos-settings
+usr/share/minos/bash-minos-settings/diverge

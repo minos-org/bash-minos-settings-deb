@@ -4,11 +4,11 @@ Upstream-Contact: https://github.com/minos-org/bash-minos-settings
 Source: https://github.com/minos-org/bash-minos-settings/archive/master.zip
 
 Files: *
-Copyright: Copyright (c) 2014, Javier P.L. <chilicuil@ubuntu.com>
+Copyright: Copyright (c) 2017, Javier P.L. <chilicuil@ubuntu.com>
 License: GPL-3
 
 Files: debian/*
-Copyright: Copyright (c) 2014, Javier P.L. <chilicuil@ubuntu.com>
+Copyright: Copyright (c) 2017, Javier P.L. <chilicuil@ubuntu.com>
 License: GPL-3
 
 License: GPL-3

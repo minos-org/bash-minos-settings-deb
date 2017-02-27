@@ -2,64 +2,58 @@
 set -e
 
 package="bash-minos-settings"
+package_dir="/usr/share/minos/${package}"
+diverge_dir="${package_dir}/diverge"
+
 users="$(cat /etc/passwd | awk -F: '{if ($3 >= 1000 && $3 < 60000) print $1}')"
-diverge_dir="/usr/share/minos/diverge"
 
 _diverge_element() {
     _diverge__orig="${1}"
     _diverge__new="${2}"
-    _diverge__backup="$(printf "%s" "${_diverge__orig}" | sed 's:/:##:g')"
+    _diverge__backup="$(printf "%s\\n" "${_diverge__orig}" | busybox sed 's:/:##:g')"
 
     if ! LC_ALL=C dpkg-divert --list "${package}" | \
         grep -xFq "diversion of ${_diverge__orig} to ${diverge_dir}/${_diverge__backup} by ${package}"; then
-        mkdir -p "${diverge_dir}"
-        dpkg-divert --package "${package}" --add --rename \
+        #busybox grep don't support the -x flag in old releases
+        busybox mkdir -p "${diverge_dir}"
+        dpkg-divert --package "${package}" --rename --add \
             --divert "${diverge_dir}/${_diverge__backup}" "${_diverge__orig}"
-        ln -s "${_diverge__new}" "${_diverge__orig}"
+
+        busybox ln -s "${_diverge__new}" "${_diverge__orig}" || :
     fi
 }
 
-_undiverge_element() {
-    _diverge__orig="${1}"
-    _diverge__new="${2}"
-    _diverge__backup="$(printf "%s" "${_diverge__orig}" | sed 's:/:##:g')"
-
-    if LC_ALL=C dpkg-divert --list "${package}" | \
-        grep -xFq "diversion of ${_diverge__orig} to ${diverge_dir}/${_diverge__backup} by ${package}"; then
-        rm -rf "${_diverge__orig}"
-        dpkg-divert --package "${package}" --rename --remove "${_diverge__orig}"
-        rmdir "${diverge_dir}" 2>/dev/null || :
-    fi
-}
-
-_replace_file_on_system_users() {
+_install_element_system_users() {
+    test -e "${1}" || return 1
     for user in ${users}; do
         su "${user}" -c "test -f ~/.minos/not_override" && continue
 
-        if su "${user}" -c "test -f ${2}" || su "${user}" -c "test -d ${2}"; then
-            dist_size="$(su "${user}" -c "du -s ${1}"|cut -f1)"
-            user_size="$(su "${user}" -c "du -s ${2}"|cut -f1)"
-            vdotfile="minos-backup.$(date +"%d-%m-%Y-%H:%M")"
+        if su "${user}" -c "test -e ${2}"; then
+            dist_size="$(su "${user}" -c "busybox du -sL ${1}"|busybox cut -f1)"
+            user_size="$(su "${user}" -c "busybox du -sL ${2}"|busybox cut -f1)"
             if [ X"${dist_size}" = X"${user_size}" ]; then
                 continue
             else
-                printf "%s\\n" "minos-core-settings: old ${user}'s ${2} archive found, replacing and creating backup to ${2}.${vdotfile}"
-                su "${user}" -c "mv ${2} ${2}.${vdotfile}"
-                su "${user}" -c "cp -rL ${1} ${2}"
+                vdotfile="minos-backup.$(busybox date +"%d-%m-%Y-%H:%M")"
+                printf "%s\\n" "${package}: old $user's ${2} archive found, replacing and creating backup to ${2}.${vdotfile}"
+                su "${user}" -c "busybox mv ${2} ${2}.${vdotfile}"
+                su "${user}" -c "busybox cp -rL ${1} ${2}"
             fi
         else
-            su "${user}" -c "cp -rL ${1} ${2}"
+            su "${user}" -c "busybox mkdir -p $(busybox dirname "${2}")"
+            su "${user}" -c "busybox cp -rL ${1} ${2}"
         fi
     done
 }
 
 case "${1}" in
     configure|abort-remove)
-        _diverge_element /etc/bash.bashrc  /usr/share/minos/bash.bashrc
-        _diverge_element /etc/inputrc      /usr/share/minos/inputrc
-        _diverge_element /etc/skel/.bashrc /usr/share/minos/skel/.bashrc
-        _replace_file_on_system_users      '/etc/skel/.bashrc' '~/.bashrc'
+        _diverge_element /etc/bash.bashrc  "${package_dir}/etc##bash.bashrc"
+        _diverge_element /etc/inputrc      "${package_dir}/etc##inputrc"
+        _diverge_element /etc/skel/.bashrc "${package_dir}/etc##skel##.bashrc"
+        _install_element_system_users      '/etc/skel/.bashrc' '~/.bashrc'
         ;;
 esac
 
 #DEBHELPER#
+exit 0

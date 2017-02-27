@@ -2,62 +2,95 @@
 set -e
 
 package="bash-minos-settings"
-diverge_dir="/usr/share/minos/diverge"
-
-_diverge_element() {
-    _diverge__orig="${1}"
-    _diverge__new="${2}"
-    _diverge__backup="$(printf "%s" "${_diverge__orig}" | sed 's:/:##:g')"
-
-    if ! LC_ALL=C dpkg-divert --list "${package}" | \
-        grep -xFq "diversion of ${_diverge__orig} to ${diverge_dir}/${_diverge__backup} by ${package}"; then
-        mkdir -p "${diverge_dir}"
-        dpkg-divert --package "${package}" --add --rename \
-            --divert "${diverge_dir}/${_diverge__backup}" "${_diverge__orig}"
-        ln -s "${_diverge__new}" "${_diverge__orig}"
-    fi
-}
+package_dir="/usr/share/minos/${package}"
+diverge_dir="${package_dir}/diverge"
 
 _undiverge_element() {
     _diverge__orig="${1}"
     _diverge__new="${2}"
-    _diverge__backup="$(printf "%s" "${_diverge__orig}" | sed 's:/:##:g')"
+    _diverge__backup="$(printf "%s\\n" "${_diverge__orig}" | busybox sed 's:/:##:g')"
 
     if LC_ALL=C dpkg-divert --list "${package}" | \
         grep -xFq "diversion of ${_diverge__orig} to ${diverge_dir}/${_diverge__backup} by ${package}"; then
-        rm -rf "${_diverge__orig}"
+        #busybox grep don't support the -x flag in old releases
+        busybox rm -rf "${_diverge__orig}"
         dpkg-divert --package "${package}" --rename --remove "${_diverge__orig}"
-        rmdir "${diverge_dir}" 2>/dev/null || :
+        busybox rmdir "${diverge_dir}" 2>/dev/null || :
     fi
 }
 
-_replace_file_on_system_users() {
+_get_last_file_version() {
+    #get last version of a bunch of .minos-backup.* files
+    [ -z "${1}" ] && return 1
+
+    _getlastversion__files="${1}".minos-backup.*
+    _getlastversion__counter="0"
+
+    for _getlastversion__file in ${_getlastversion__files}; do
+        _getlastversion__counter="$((${_getlastversion__counter} + 1))"
+    done
+
+    if [ "${_getlastversion__counter}" -eq "1" ]; then
+        if [ -e "${_getlastversion__file}" ]; then
+            printf "%s" "${_getlastversion__file}"
+        elif [ -e "${1}" ]; then
+            printf "%s" "${1}"
+        fi
+    else
+        _getlastversion__newer="${_getlastversion__file}"
+        for _getlastversion__file in ${_getlastversion__files}; do
+            if [ "${_getlastversion__file}" -nt "${_getlastversion__newer}" ]; then
+                _getlastversion__newer="${_getlastversion__file}"
+            fi
+        done
+        if [ -e "${_getlastversion__newer}" ]; then
+            printf "%s" "${_getlastversion__newer}"
+        fi
+    fi
+}
+
+_uninstall_element_system_users() {
+    test -n "${2}" || return 1
     for user in ${users}; do
         su "${user}" -c "test -f ~/.minos/not_override" && continue
 
-        if su "${user}" -c "test -f ${2}" || su "${user}" -c "test -d ${2}"; then
-            dist_size="$(su "${user}" -c "du -s ${1}"|cut -f1)"
-            user_size="$(su "${user}" -c "du -s ${2}"|cut -f1)"
-            vdotfile="minos-backup.$(date +"%d-%m-%Y-%H:%M")"
+        h="$(su "${user}" -c "echo ~" 2>/dev/null)" || continue
+        archive="$(printf "%s\\n" "${2}" | busybox sed "s:\$HOME:${h}:g;s:~/:${h}/:;s:\"::g;s:\'::g;")"
+        last_file="$(_get_last_file_version "${archive}")"
+
+        if test -e "${1}" && su "${user}" -c "test -e ${2}"; then
+            dist_size="$(su "${user}" -c "busybox du -sL ${1}"|busybox cut -f1)"
+            user_size="$(su "${user}" -c "busybox du -sL ${2}"|busybox cut -f1)"
             if [ X"${dist_size}" = X"${user_size}" ]; then
-                continue
-            else
-                printf "%s\\n" "minos-core-settings: old ${user}'s ${2} archive found, replacing and creating backup to ${2}.${vdotfile}"
-                su "${user}" -c "mv ${2} ${2}.${vdotfile}"
-                su "${user}" -c "cp -rL ${1} ${2}"
+                rm -rf "${archive}"
+                busybox rmdir --ignore-fail-on-non-empty "$(busybox dirname "${archive}")"
             fi
-        else
-            su "${user}" -c "cp -rL ${1} ${2}"
+        fi
+
+        if su "${user}" -c "test -e ${last_file}"; then
+            if su "${user}" -c "test -e ${2}"; then
+                user_size="$(su "${user}" -c "busybox du -sL ${2}"|busybox cut -f1)"
+                last_size="$(su "${user}" -c "busybox du -sL ${last_file}"|busybox cut -f1)"
+                if [ X"${last_size}" = X"${user_size}" ]; then
+                    continue
+                else
+                    printf "%s\\n" "${package}: old $user's archive found, recovering last version to ${2}"
+                    su "${user}" -c "busybox mv ${last_file} ${2}"
+                fi
+            fi
         fi
     done
 }
 
 case "${1}" in
     remove|deconfigure)
-        _undiverge_element /etc/bash.bashrc  /usr/share/minos/bash.bashrc
-        _undiverge_element /etc/inputrc      /usr/share/minos/inputrc
-        _undiverge_element /etc/skel/.bashrc /usr/share/minos/skel/.bashrc
+        _undiverge_element /etc/bash.bashrc  "${package_dir}/etc##bash.bashrc"
+        _undiverge_element /etc/inputrc      "${package_dir}/etc##inputrc"
+        _undiverge_element /etc/skel/.bashrc "${package_dir}/etc##skel##.bashrc"
+
+        _uninstall_element_system_users      '/etc/skel/.bashrc' '~/.bashrc'
         ;;
 esac
 
 #DEBHELPER#
+exit 0
