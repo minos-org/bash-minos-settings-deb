@@ -7,14 +7,13 @@ diverge_dir="${package_dir}/diverge"
 
 _undiverge_element() {
     _diverge__orig="${1}"
-    _diverge__new="${2}"
     _diverge__backup="$(printf "%s\\n" "${_diverge__orig}" | busybox sed 's:/:##:g')"
 
     if LC_ALL=C dpkg-divert --list "${package}" | \
         grep -xFq "diversion of ${_diverge__orig} to ${diverge_dir}/${_diverge__backup} by ${package}"; then
         #busybox grep don't support the -x flag in old releases
         busybox rm -rf "${_diverge__orig}"
-        dpkg-divert --package "${package}" --rename --remove "${_diverge__orig}"
+        dpkg-divert --package "${package}" --remove "${_diverge__orig}"
         busybox rmdir "${diverge_dir}" 2>/dev/null || :
     fi
 }
@@ -83,7 +82,7 @@ _uninstall_element_system_users() {
 }
 
 case "${1}" in
-    remove|deconfigure)
+    upgrade|deconfigure|remove)
         _undiverge_element /etc/bash.bashrc  "${package_dir}/etc##bash.bashrc"
         _undiverge_element /etc/inputrc      "${package_dir}/etc##inputrc"
         _undiverge_element /etc/skel/.bashrc "${package_dir}/etc##skel##.bashrc"
